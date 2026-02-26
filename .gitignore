@@ -58,5 +58,3 @@ logs/
 htmlcov/
 .coverage
 coverage/
-
-frontend/

@@ -1,0 +1,49 @@
+version: "3.9"
+
+services:
+  db:
+    image: timescale/timescaledb:latest-pg16
+    environment:
+      POSTGRES_USER: aifip
+      POSTGRES_PASSWORD: aifip_secret
+      POSTGRES_DB: aifip
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./migrations/init.sql:/docker-entrypoint-initdb.d/init.sql
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    command: redis-server --maxmemory 512mb --maxmemory-policy allkeys-lru
+
+  backend:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql+asyncpg://aifip:aifip_secret@db:5432/aifip
+      REDIS_URL: redis://redis:6379
+      HUGGINGFACE_MODEL: ProsusAI/finbert
+      SECRET_KEY: super_secret_key_change_in_prod
+    depends_on:
+      - db
+      - redis
+    volumes:
+      - ./backend:/app
+      - model_cache:/root/.cache/huggingface
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "3000:3000"
+    environment:
+      VITE_API_URL: http://localhost:8000
+    volumes:
+      - ./frontend/src:/app/src
+
+volumes:
+  pgdata:
+  model_cache:
